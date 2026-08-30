@@ -3,8 +3,24 @@ from config import TOKEN, ADMIN_ID
 from data import db
 import core
 from telebot.apihelper import ApiTelegramException
+import time
+import threading
 
 bot = telebot.TeleBot(TOKEN)
+
+user_locks = {}
+flood_lock = threading.Lock()
+
+def is_flooding(uid):
+    with flood_lock:
+        now = time.time()
+        if uid in user_locks and now - user_locks[uid] < 0.7:
+            return True
+        user_locks[uid] = now
+        if len(user_locks) > 2000:
+            expired = [k for k, v in user_locks.items() if now - v > 60]
+            for k in expired: del user_locks[k]
+        return False
 
 def send_edit(uid, text, reply_markup=None, send_new=False):
     last_id = db.get_last_msg(uid)
@@ -36,6 +52,7 @@ def safe_answer(call_id, text=None):
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     db.add_user(uid)
     delete_msg(uid, message.message_id)
     text = core.welcome(uid)
@@ -44,6 +61,7 @@ def start_handler(message):
 @bot.message_handler(commands=['new'])
 def new_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     db.add_user(uid)
     delete_msg(uid, message.message_id)
     text = "Name your new list:"
@@ -51,15 +69,18 @@ def new_handler(message):
     bot.register_next_step_handler_by_chat_id(uid, reg_list)
 def reg_list(message):
     uid = message.chat.id
+    delete_msg(uid, message.message_id)
+    if not message.text: return
+    if is_flooding(uid): return
     name = message.text
     text = core.create_list(uid, name)
     msg = send_edit(uid, text)
-    delete_msg(uid, message.message_id)
 
 
 @bot.message_handler(commands=['add'])
 def add_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     db.add_user(uid)
     delete_msg(uid, message.message_id)
     text = "Type your new task:"
@@ -68,12 +89,15 @@ def add_handler(message):
 def add_task(message):
     uid = message.chat.id
     delete_msg(uid, message.message_id)
+    if not message.text: return
+    if is_flooding(uid): return
     text = core.add_task(uid, message.text)
     send_edit(uid, text)
 
 @bot.message_handler(commands=['list'])
 def list_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     text = core.get_cur_list(uid)
     is_group = message.chat.type != 'private'
@@ -85,6 +109,7 @@ def list_handler(message):
 @bot.message_handler(commands=['lists'])
 def lists_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     text = core.get_all(uid)
     is_group = message.chat.type != 'private'
@@ -96,6 +121,7 @@ def lists_handler(message):
 @bot.message_handler(commands=['edit'])
 def edit_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     text, markup = core.get_edit_ui(uid)
     is_group = message.chat.type != 'private'
@@ -107,6 +133,7 @@ def edit_handler(message):
 @bot.message_handler(commands=['del'])
 def del_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     text, markup = core.get_delete_ui(uid)
     send_edit(uid, text, reply_markup=markup)
@@ -114,6 +141,7 @@ def del_handler(message):
 @bot.message_handler(commands=['done'])
 def done_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     text, markup = core.get_done_ui(uid)
     send_edit(uid, text, reply_markup=markup)
@@ -121,6 +149,7 @@ def done_handler(message):
 @bot.message_handler(commands=['rem'])
 def rem_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     text, markup = core.get_rem_ui(uid)
     send_edit(uid, text, reply_markup=markup)
@@ -128,6 +157,7 @@ def rem_handler(message):
 @bot.message_handler(commands=['help'])
 def help_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     text = core.help_text()
     send_edit(uid, text)
@@ -136,6 +166,7 @@ def help_handler(message):
 @bot.message_handler(commands=['donate'])
 def donate_handler(message):
     uid = message.chat.id
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     text, markup = core.get_donate_ui()
     send_edit(uid, text, reply_markup=markup)
@@ -187,8 +218,10 @@ def all_handler(message):
     if message.chat.type != 'private':
         return
     uid = message.chat.id
-    db.add_user(uid)
+    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
+    if not message.text: return
+    db.add_user(uid)
     text = core.add_task(uid, message.text)
     send_edit(uid, text)
 
@@ -196,6 +229,9 @@ def all_handler(message):
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
     uid = call.message.chat.id
+    if is_flooding(uid):
+        safe_answer(call.id, "Too fast! Please wait a moment.")
+        return
     data = call.data
     if data.startswith("dx_s_"):
         list_id = int(data.split("_")[2])
