@@ -127,6 +127,7 @@ class Database:
     @connection_lock
     def rem_list(self, lid):
         with self.conn:
+            self.conn.execute("DELETE FROM tasks WHERE list_id = ?", (lid,))
             self.conn.execute("UPDATE users SET active_list_id = NULL WHERE active_list_id = ?", (lid,))
             self.conn.execute("DELETE FROM list WHERE id = ?", (lid,))
 

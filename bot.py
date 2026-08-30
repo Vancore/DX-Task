@@ -6,14 +6,13 @@ from telebot.apihelper import ApiTelegramException
 
 bot = telebot.TeleBot(TOKEN)
 
-def send_edit(uid, text, reply_markup=None):
+def send_edit(uid, text, reply_markup=None, send_new=False):
     last_id = db.get_last_msg(uid)
-    if last_id:
+    if last_id and not send_new:
         try:
             return bot.edit_message_text(chat_id=uid, message_id=last_id,text=text,reply_markup=reply_markup,parse_mode="HTML")
         except ApiTelegramException as e:
-            if "message is not modified" in e.description:
-                pass
+            pass
     msg = bot.send_message(uid, text, reply_markup=reply_markup, parse_mode="HTML")
     db.update_last_msg(uid, msg.message_id)
     return msg
@@ -77,21 +76,33 @@ def list_handler(message):
     uid = message.chat.id
     delete_msg(uid, message.message_id)
     text = core.get_cur_list(uid)
-    send_edit(uid, text)
+    is_group = message.chat.type != 'private'
+    old_mid = db.get_last_msg(uid)
+    if old_mid and is_group:
+        delete_msg(uid, old_mid)
+    send_edit(uid, text, send_new=is_group)
 
 @bot.message_handler(commands=['lists'])
 def lists_handler(message):
     uid = message.chat.id
     delete_msg(uid, message.message_id)
     text = core.get_all(uid)
-    send_edit(uid, text)
+    is_group = message.chat.type != 'private'
+    old_mid = db.get_last_msg(uid)
+    if old_mid and is_group:
+        delete_msg(uid, old_mid)
+    send_edit(uid, text, send_new=is_group)
 
 @bot.message_handler(commands=['edit'])
 def edit_handler(message):
     uid = message.chat.id
     delete_msg(uid, message.message_id)
     text, markup = core.get_edit_ui(uid)
-    send_edit(uid, text, reply_markup=markup)
+    is_group = message.chat.type != 'private'
+    old_mid = db.get_last_msg(uid)
+    if old_mid and is_group:
+        delete_msg(uid, old_mid)
+    send_edit(uid, text, reply_markup=markup, send_new=is_group)
 
 @bot.message_handler(commands=['del'])
 def del_handler(message):
@@ -196,10 +207,7 @@ def handle_callbacks(call):
     elif data == "dx_main":
         safe_answer(call.id)
         text = core.get_cur_list(uid)
-        if isinstance(text, tuple):
-            send_edit(uid, text[0], reply_markup=text[1])
-        else:
-            send_edit(uid, text)
+        send_edit(uid, text)
 
     elif data.startswith("dx_d_"):
         task_id = int(data.split("_")[2])
