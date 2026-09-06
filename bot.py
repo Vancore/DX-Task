@@ -216,6 +216,10 @@ def menu_on(message):
     uid = message.chat.id
     if is_flooding(uid): return
     delete_msg(uid, message.message_id)
+    markup = types.ReplyKeyboardRemove()
+    text = "<b>Interface Hidden.</b>\nUse /on to restore the Control Panel."
+    msg = send_edit(uid, text, reply_markup=markup)
+    delete_msg(uid, msg.message_id)
     markup = get_main_menu()
     text = "<b>System Restored.</b>\nDX Task is running perfectly. 🚀\n\n<i>Tip: Keep this message to maintain the interface.</i>"
     bot.send_message(uid, text, reply_markup=markup, parse_mode="HTML")
