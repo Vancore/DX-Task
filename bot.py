@@ -28,7 +28,7 @@ def send_edit(uid, text, reply_markup=None, send_new=False):
     if last_id and not send_new:
         try:
             return bot.edit_message_text(chat_id=uid, message_id=last_id,text=text,reply_markup=reply_markup,parse_mode="HTML")
-        except ApiTelegramException as e:
+        except:
             pass
     msg = bot.send_message(uid, text, reply_markup=reply_markup, parse_mode="HTML")
     db.update_last_msg(uid, msg.message_id)
