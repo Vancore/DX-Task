@@ -12,28 +12,38 @@ def check_str(txt):
     return True
 
 def welcome(uid):
-    return ("<b>DX Task</b>\n"
-            "Everything in its place.\n\n"
-            "Simple, focused, and designed to keep your mind clear.\n"
-            "To begin, create your first collection:\n\n"
-            "/new — Create new list\n"
-            "/help — Command guide")
+    return (
+        "<b>DX Task</b>\n"
+        "Everything in its place.\n\n"
+        "Simple, focused, and designed to keep your mind clear.\n"
+        "To begin, create your first collection."
+    )
 
 def help_text():
     return (
-        "<b>DX Task — Guide</b> 🛠\n\n"
-        "<b>Collections:</b>\n"
-        "/new — Create new list\n"
-        "/lists — View all collections\n"
-        "/edit — Switch active list\n"
-        "/rem — Delete collection\n\n"
-        "<b>Tasks:</b>\n"
-        "/list — Show current tasks\n"
-        "/add — Add new task\n"
-        "/done — Mark as completed\n"
-        "/del — Delete task\n\n"
-        "<b>Quick Add:</b>\n"
-        "<i>In private chats, you can just type any text without /add to save a task.</i>"
+        "<b>DX Task — System Protocol</b> 🛠\n"
+        "<i>Everything in its place.</i>\n\n"
+        
+        "<b>📂 Collections</b>\n"
+        "/new — Create a new list\n"
+        "/lists — View all your collections\n"
+        "/edit — Switch the active list\n"
+        "/rem — Permanently delete a list\n\n"
+        
+        "<b>📝 Tasks</b>\n"
+        "/list — Show tasks in the active list\n"
+        "/add — Add a task manually\n"
+        "/done — Mark tasks as completed\n"
+        "/del — Remove tasks from the list\n\n"
+        
+        "<b>📱 Private Chat</b>\n"
+        "/on — Enable Control Panel\n"
+        "/off — Disable Control Panel\n"
+        "<i>Quick Add: Just type and send any text.</i>\n\n"
+        
+        "<b>⚙️ System</b>\n"
+        "/donate — Upgrade to DX Pro\n"
+        "/help — Show this protocol"
     )
 
 def show_list(lid):
@@ -55,14 +65,16 @@ def show_list(lid):
 def create_list(uid, name):
     name = name.strip()
     if db.count_lists(uid) >= 3 and not db.is_premium(uid):
-        return ("<b>Collection Limit Reached.</b>\n\n"
-                "To keep your focus sharp, the free version is limited to 3 collections.\n\n"
-                "Upgrade to <b>DX Pro</b> for more, or use /rem to manage your lists."
+        return (
+            "<b>Collection Limit Reached.</b>\n\n"
+            "To maintain absolute focus, the standard core is limited to 3 collections.\n\n"
+            "Expand your system's capacity with <b>DX Pro</b> or remove an existing collection to continue."
             )
     if db.count_lists(uid) >= 30:
-        return ("<b>Maximum Limit Reached.</b>\n\n"
-                "DX Task supports up to 30 active collections.\n"
-                "Please use /rem to free up some space."
+        return (
+            "<b>Maximum Capacity.</b>\n\n"
+            "The system is optimized for up to 30 active collections.\n"
+            "Please remove an existing collection to free up space."
             )
     if len(name) > 30:
         return "<b>Name is too long.</b>\nMax 30 characters."
@@ -77,18 +89,22 @@ def add_task(uid, text):
     text = text.strip()
     lid = db.get_active_list(uid)
     if lid == None:
-        return ("<b>No active list.</b>\n"
-            "Please create a new collection or select an existing one to continue.\n\n"
-            "/new — Create new\n"
-            "/edit — Select existing")
+        return (
+            "<b>No Active Collection.</b>\n"
+            "Please create a new list or select an existing one to continue."
+            )
     if db.count_tasks(lid) >= 15 and not db.is_premium(uid):
-        return ("<b>Focus Limit Reached.</b>\n\n"
-                "Free lists are limited to 15 tasks to keep your day manageable.\n\n"
-                "Use /del to remove tasks, or upgrade to <b>DX Pro</b> for 30 slots.")
+        return (
+            "<b>Focus Limit Reached.</b>\n\n"
+            "Standard collections are limited to 15 tasks to maintain absolute clarity.\n\n"
+            "Upgrade to <b>DX Pro</b> for expanded capacity or remove existing tasks to free up space."
+        )
     if db.count_tasks(lid) >= 30:
-        return ("<b>Maximum Capacity.</b>\n\n"
-                "You've reached the limit of 30 tasks.\n\n"
-                "Use /del to free up some space and stay productive.")
+        return (
+            "<b>Maximum Capacity.</b>\n\n"
+            "This collection has reached its 30-task limit.\n"
+            "Please remove existing entries to free up space and maintain focus."
+        )
     if len(text) > 100:
             return "<b>Task is too long.</b>\nKeep it under 100 characters."
     if not check_str(text):
@@ -101,15 +117,15 @@ def add_task(uid, text):
 def get_cur_list(uid):
     lid = db.get_active_list(uid)
     if lid == None:
-        return ("<b>No active list.</b>\n"
-            "Please create a new collection or select an existing one to continue.\n\n"
-            "/new — Create new\n"
-            "/edit — Select existing")
+        return (
+            "<b>No Active Collection.</b>\n"
+            "Please create a new list or select an existing one to continue."
+        )
     return show_list(lid)
 
 def get_all(uid):
     if db.count_lists(uid) == 0:
-        return ("<b>You have no collections yet.</b>\nUse /new to create one.")
+        return ("<b>No Collections Found.</b>\nPlease create a new collection to begin.")
     text = "<b>YOUR COLLECTIONS</b>\n\n"
     for id, name in db.get_all_list(uid):
         text += f"• {name}\n"
@@ -119,7 +135,7 @@ def get_all(uid):
 def get_edit_ui(uid):
     lists = db.get_all_list(uid)
     if not lists:
-        return ("<b>No collections found.</b>\nUse /new to create one.", None)
+        return ("<b>No Collections Found.</b>\nPlease create a new collection to begin.", None)
     markup = types.InlineKeyboardMarkup()
     for lid, title in lists:
         btn = types.InlineKeyboardButton(text=title, callback_data=f"dx_s_{lid}")
@@ -175,12 +191,13 @@ def get_rem_ui(uid):
 
 def get_donate_ui():
     text = (
-        "<b>Upgrade to DX Pro</b> ⚡\n\n"
-        "Unlock the full potential of your task management:\n"
-        "• Up to <b>30 collections</b> (instead of 3)\n"
-        "• Up to <b>30 tasks</b> per list (instead of 15)\n"
-        "• Support independent development\n\n"
-        "<i>One-time payment: 50 Stars</i>"
+        "<b>DX Pro — The Professional Standard</b> ⚡\n\n"
+        "Elevate your system to its full architectural capacity. "
+        "Unlock the power of professional task management:\n\n"
+        "• <b>30 Collections</b> — Build your empire.\n"
+        "• <b>30 Tasks</b> per list — Master every detail.\n"
+        "• Support the evolution of DX Task.\n\n"
+        "<i>Lifetime Activation: 50 Stars</i>"
     )
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("⭐️ Activate DX Pro (50 Stars)", callback_data="dx_pay_50"))

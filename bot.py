@@ -5,6 +5,7 @@ import core
 from telebot.apihelper import ApiTelegramException
 import time
 import threading
+from telebot import types
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -49,6 +50,26 @@ def safe_answer(call_id, text=None):
             print(f"{e.description}")
 
 
+def get_main_menu():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder="DX Task System...")
+    markup.row(
+        types.KeyboardButton('➕ New List'), 
+        types.KeyboardButton('✅ Done'), 
+        types.KeyboardButton('🗑 Delete')
+    )
+    markup.row(
+        types.KeyboardButton('🔄 Switch'), 
+        types.KeyboardButton('🗂 Collections'), 
+        types.KeyboardButton('📋 Tasks')
+    )
+    markup.row(
+        types.KeyboardButton('⚠️ Wipe'), 
+        types.KeyboardButton('❓ Guide'), 
+        types.KeyboardButton('⭐️ DX Pro')
+    )
+    return markup
+
+
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     uid = message.chat.id
@@ -56,7 +77,11 @@ def start_handler(message):
     db.add_user(uid)
     delete_msg(uid, message.message_id)
     text = core.welcome(uid)
-    send_edit(uid, text)
+    if message.chat.type != 'private':
+            bot.send_message(uid, text, parse_mode="HTML")
+            return
+    menu = get_main_menu()
+    bot.send_message(uid, text, reply_markup=menu, parse_mode="HTML")
 
 @bot.message_handler(commands=['new'])
 def new_handler(message):
@@ -162,6 +187,28 @@ def help_handler(message):
     text = core.help_text()
     send_edit(uid, text)
 
+@bot.message_handler(commands=['off'])
+def menu_off(message):
+    if message.chat.type != 'private':
+            return
+    uid = message.chat.id
+    if is_flooding(uid): return
+    delete_msg(uid, message.message_id)
+    markup = types.ReplyKeyboardRemove()
+    text = "<b>Interface Hidden.</b>\nUse /on to restore the Control Panel."
+    send_edit(uid, text, reply_markup=markup)
+
+@bot.message_handler(commands=['on'])
+def menu_on(message):
+    if message.chat.type != 'private':
+            return
+    uid = message.chat.id
+    if is_flooding(uid): return
+    delete_msg(uid, message.message_id)
+    markup = get_main_menu()
+    text = "<b>Interface Restored.</b>\nSystem is ready."
+    bot.send_message(uid, text, reply_markup=markup, parse_mode="HTML")
+
 
 @bot.message_handler(commands=['donate'])
 def donate_handler(message):
@@ -218,9 +265,19 @@ def all_handler(message):
     if message.chat.type != 'private':
         return
     uid = message.chat.id
-    if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     if not message.text: return
+    text = message.text
+    if text == '📋 Tasks': return list_handler(message)
+    if text == '✅ Done': return done_handler(message)
+    if text == '🗑 Delete': return del_handler(message)
+    if text == '➕ New List': return new_handler(message)
+    if text == '🗂 Collections': return lists_handler(message)
+    if text == '🔄 Switch': return edit_handler(message)
+    if text == '⚠️ Wipe': return rem_handler(message)
+    if text == '❓ Guide': return help_handler(message)
+    if text == '⭐️ DX Pro':  return donate_handler(message)
+    if is_flooding(uid): return
     db.add_user(uid)
     text = core.add_task(uid, message.text)
     send_edit(uid, text)
