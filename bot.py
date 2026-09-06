@@ -190,7 +190,7 @@ def help_handler(message):
 @bot.message_handler(commands=['off'])
 def menu_off(message):
     if message.chat.type != 'private':
-            return
+        return
     uid = message.chat.id
     if is_flooding(uid): return
     delete_msg(uid, message.message_id)
@@ -201,12 +201,23 @@ def menu_off(message):
 @bot.message_handler(commands=['on'])
 def menu_on(message):
     if message.chat.type != 'private':
-            return
+        return
     uid = message.chat.id
     if is_flooding(uid): return
     delete_msg(uid, message.message_id)
     markup = get_main_menu()
     text = "<b>Interface Restored.</b>\nSystem is ready."
+    bot.send_message(uid, text, reply_markup=markup, parse_mode="HTML")
+
+@bot.message_handler(commands=['fix'])
+def menu_on(message):
+    if message.chat.type != 'private':
+        return
+    uid = message.chat.id
+    if is_flooding(uid): return
+    delete_msg(uid, message.message_id)
+    markup = get_main_menu()
+    text = "<b>System Restored.</b>\nDX Task is running perfectly. 🚀\n\n<i>Tip: Keep this message to maintain the interface.</i>"
     bot.send_message(uid, text, reply_markup=markup, parse_mode="HTML")
 
 
