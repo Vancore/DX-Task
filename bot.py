@@ -6,21 +6,18 @@ from telebot.apihelper import ApiTelegramException
 import time
 import threading
 from telebot import types
+from cachetools import TTLCache
 
 bot = telebot.TeleBot(TOKEN)
 
-user_locks = {}
+flood_cache = TTLCache(maxsize=10000, ttl=1.0)
 flood_lock = threading.Lock()
 
 def is_flooding(uid):
     with flood_lock:
-        now = time.time()
-        if uid in user_locks and now - user_locks[uid] < 0.7:
+        if uid in flood_cache:
             return True
-        user_locks[uid] = now
-        if len(user_locks) > 2000:
-            expired = [k for k, v in user_locks.items() if now - v > 60]
-            for k in expired: del user_locks[k]
+        flood_cache[uid] = True
         return False
 
 def send_edit(uid, text, reply_markup=None, send_new=False):
@@ -96,7 +93,6 @@ def reg_list(message):
     uid = message.chat.id
     delete_msg(uid, message.message_id)
     if not message.text: return
-    if is_flooding(uid): return
     name = message.text
     text = core.create_list(uid, name)
     msg = send_edit(uid, text)
@@ -115,7 +111,6 @@ def add_task(message):
     uid = message.chat.id
     delete_msg(uid, message.message_id)
     if not message.text: return
-    if is_flooding(uid): return
     text = core.add_task(uid, message.text)
     send_edit(uid, text)
 
@@ -210,7 +205,7 @@ def menu_on(message):
     bot.send_message(uid, text, reply_markup=markup, parse_mode="HTML")
 
 @bot.message_handler(commands=['fix'])
-def menu_on(message):
+def menu_fix(message):
     if message.chat.type != 'private':
         return
     uid = message.chat.id
@@ -228,7 +223,7 @@ def menu_on(message):
 @bot.message_handler(commands=['donate'])
 def donate_handler(message):
     uid = message.chat.id
-    if is_flooding(uid): return
+    if is_flooding(uid): return 
     delete_msg(uid, message.message_id)
     text, markup = core.get_donate_ui()
     send_edit(uid, text, reply_markup=markup)
