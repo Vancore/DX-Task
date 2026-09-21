@@ -225,7 +225,7 @@ def donate_handler(message):
     uid = message.chat.id
     if is_flooding(uid): return 
     delete_msg(uid, message.message_id)
-    text, markup = core.get_donate_ui()
+    text, markup = core.get_donate_ui(uid)
     send_edit(uid, text, reply_markup=markup)
 
 
@@ -237,11 +237,26 @@ def checkout(pre_checkout_query):
 @bot.message_handler(content_types=['successful_payment'])
 def got_payment(message):
     uid = message.chat.id
-    db.set_pro(uid)
+    payload = message.successful_payment.invoice_payload
     delete_msg(uid, message.message_id)
+
+    if payload == "pro_1m":
+        db.set_pro(uid, days=30)
+        plan_desc = "1 Month (30 days)"
+    elif payload == "pro_3m":
+        db.set_pro(uid, days=90)
+        plan_desc = "3 Months (90 days)"
+    elif payload == "pro_life":
+        db.set_pro(uid, days=-1)
+        plan_desc = "Lifetime 👑"
+    else:
+        db.set_pro(uid, days=-1)
+        plan_desc = "Lifetime 👑"
+
     text = (
         "<b>DX Pro Activated!</b> 🏆\n\n"
-        "Your system has been upgraded. All limits are now expanded.\n"
+        f"<b>Plan:</b> {plan_desc}\n"
+        "Your system has been upgraded. All limits are now expanded.\n\n"
         "Thank you for supporting the core."
     )
     send_edit(uid, text)
@@ -328,22 +343,31 @@ def handle_callbacks(call):
 
     elif data.startswith("dx_r_"):
         list_id = int(data.split("_")[2])
-        db.rem_list(list_id)
+        db.rem_list(uid, list_id)
         safe_answer(call.id, "Collection destroyed.")
         text, markup = core.get_rem_ui(uid)
         send_edit(uid, text, reply_markup=markup)
 
     elif data.startswith("dx_pay_"):
-        amount = int(data.split("_")[2])
+        tariff = data.split("_")[2]
+        tariffs = {
+            "1m": {"amount": 75, "days": 30, "title": "DX Pro — 1 Month"},
+            "3m": {"amount": 150, "days": 90, "title": "DX Pro — 3 Months"},
+            "life": {"amount": 499, "days": -1, "title": "DX Pro — Lifetime Access"}
+        }
+        item = tariffs.get(tariff)
+        if not item:
+            safe_answer(call.id, "Invalid tariff.")
+            return
         safe_answer(call.id, "Generating invoice...")
         bot.send_invoice(
             chat_id=uid,
-            title="Support DX Task",
-            description=f"Donation of {amount} Stars",
-            invoice_payload=f"donate_{amount}",
+            title=item["title"],
+            description=f"Upgrade to DX Pro ({item['title']})",
+            invoice_payload=f"pro_{tariff}",
             provider_token="",
             currency="XTR",
-            prices=[telebot.types.LabeledPrice(label="Stars", amount=amount)]
+            prices=[types.LabeledPrice(label=item["title"], amount=item["amount"])]
         )
 
 bot.infinity_polling()

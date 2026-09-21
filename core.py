@@ -189,18 +189,21 @@ def get_rem_ui(uid):
         markup)
 
 
-def get_donate_ui():
+def get_donate_ui(uid):
+    status = db.get_pro_info(uid)
     text = (
-        "<b>DX Pro — The Professional Standard</b> ⚡\n\n"
-        "Elevate your system to its full architectural capacity. "
-        "Unlock the power of professional task management:\n\n"
-        "• <b>30 Collections</b> — Build your empire.\n"
-        "• <b>30 Tasks</b> per list — Master every detail.\n"
-        "• Support the evolution of DX Task.\n\n"
-        "<i>Lifetime Activation: 50 Stars</i>"
+        "<b>DX Pro — The Architectural Standard</b> ⚡\n\n"
+        "Unlock the system's full capacity and master your focus:\n\n"
+        "• <b>30 Collections</b> (instead of 3)\n"
+        "• <b>30 Tasks</b> per list (instead of 15)\n"
+        "• Support active development & core infrastructure\n\n"
+        f"<b>Current Status:</b> <code>{status}</code>\n\n"
+        "<i>Select your upgrade plan:</i>"
     )
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("⭐️ Activate DX Pro (50 Stars)", callback_data="dx_pay_50"))
+    markup.add(types.InlineKeyboardButton("⭐️ 1 Month — 75 Stars", callback_data="dx_pay_1m"))
+    markup.add(types.InlineKeyboardButton("🔥 3 Months — 150 Stars (-33%)", callback_data="dx_pay_3m"))
+    markup.add(types.InlineKeyboardButton("👑 Lifetime — 499 Stars", callback_data="dx_pay_life"))
     markup.add(types.InlineKeyboardButton("⬅️ Back", callback_data="dx_main"))
     return text, markup
 
